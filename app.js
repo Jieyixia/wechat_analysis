@@ -22,7 +22,9 @@ document.getElementById('dataForm').addEventListener('submit', function (e) {
         reads: parseInt(document.getElementById('reads').value) || 0,
         likes: parseInt(document.getElementById('likes').value) || 0,
         shares: parseInt(document.getElementById('shares').value) || 0,
-        favorites: parseInt(document.getElementById('favorites').value) || 0,
+        recommendSource: parseInt(document.getElementById('recommendSource').value) || 0,
+        completionRate: parseFloat(document.getElementById('completionRate').value) || 0,
+        avgReadTime: parseInt(document.getElementById('avgReadTime').value) || 0,
         comments: parseInt(document.getElementById('comments').value) || 0,
         newFollowers: parseInt(document.getElementById('newFollowers').value) || 0,
         unfollowers: parseInt(document.getElementById('unfollowers').value) || 0,
@@ -58,7 +60,9 @@ function generateSampleData() {
         const reads = Math.floor(Math.random() * 8000) + 1000;
         const likes = Math.floor(reads * (0.02 + Math.random() * 0.06));
         const shares = Math.floor(reads * (0.01 + Math.random() * 0.03));
-        const favorites = Math.floor(reads * (0.005 + Math.random() * 0.02));
+        const recommendSource = Math.floor(reads * (0.3 + Math.random() * 0.5));
+        const completionRate = parseFloat((20 + Math.random() * 60).toFixed(1));
+        const avgReadTime = Math.floor(30 + Math.random() * 270);
         const cmts = Math.floor(reads * (0.003 + Math.random() * 0.01));
         const newF = Math.floor(Math.random() * 200) + 30;
         const unF = Math.floor(Math.random() * 50) + 5;
@@ -67,7 +71,8 @@ function generateSampleData() {
             id: Date.now() + i,
             date: date.toISOString().slice(0, 10),
             title: titles[i],
-            reads, likes, shares, favorites,
+            reads, likes, shares, recommendSource,
+            completionRate, avgReadTime,
             comments: cmts,
             newFollowers: newF,
             unfollowers: unF,
@@ -95,8 +100,8 @@ function deleteEntry(id) {
 // ====== CSV 导出 ======
 document.getElementById('exportBtn').addEventListener('click', function () {
     if (dataset.length === 0) { alert('没有数据可导出'); return; }
-    const headers = ['日期', '标题', '阅读量', '点赞', '分享', '收藏', '评论', '新增关注', '取消关注', '总关注'];
-    const keys = ['date', 'title', 'reads', 'likes', 'shares', 'favorites', 'comments', 'newFollowers', 'unfollowers', 'totalFollowers'];
+    const headers = ['日期', '标题', '阅读量', '点赞', '分享', '推荐来源', '完读率', '平均阅读时长', '评论', '新增关注', '取消关注', '总关注'];
+    const keys = ['date', 'title', 'reads', 'likes', 'shares', 'recommendSource', 'completionRate', 'avgReadTime', 'comments', 'newFollowers', 'unfollowers', 'totalFollowers'];
     const bom = '\uFEFF';
     const csv = bom + headers.join(',') + '\n' + dataset.map(d =>
         keys.map(k => {
@@ -125,7 +130,7 @@ document.getElementById('importFile').addEventListener('change', function (e) {
         const newData = [];
         for (let i = 1; i < lines.length; i++) {
             const cols = parseCSVLine(lines[i]);
-            if (cols.length < 10) continue;
+            if (cols.length < 12) continue;
             newData.push({
                 id: Date.now() + i,
                 date: cols[0],
@@ -133,11 +138,13 @@ document.getElementById('importFile').addEventListener('change', function (e) {
                 reads: parseInt(cols[2]) || 0,
                 likes: parseInt(cols[3]) || 0,
                 shares: parseInt(cols[4]) || 0,
-                favorites: parseInt(cols[5]) || 0,
-                comments: parseInt(cols[6]) || 0,
-                newFollowers: parseInt(cols[7]) || 0,
-                unfollowers: parseInt(cols[8]) || 0,
-                totalFollowers: parseInt(cols[9]) || 0,
+                recommendSource: parseInt(cols[5]) || 0,
+                completionRate: parseFloat(cols[6]) || 0,
+                avgReadTime: parseInt(cols[7]) || 0,
+                comments: parseInt(cols[8]) || 0,
+                newFollowers: parseInt(cols[9]) || 0,
+                unfollowers: parseInt(cols[10]) || 0,
+                totalFollowers: parseInt(cols[11]) || 0,
             });
         }
         if (newData.length === 0) { alert('未能解析到有效数据'); return; }
@@ -188,6 +195,15 @@ function fmt(n) {
     return n.toLocaleString('zh-CN');
 }
 
+function fmtTime(seconds) {
+    if (seconds >= 60) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return s > 0 ? m + '分' + s + '秒' : m + '分';
+    }
+    return seconds + '秒';
+}
+
 // ====== 刷新所有视图 ======
 const chartInstances = {};
 
@@ -208,9 +224,10 @@ function updateOverview() {
     const totalReads = dataset.reduce((s, d) => s + d.reads, 0);
     const totalLikes = dataset.reduce((s, d) => s + d.likes, 0);
     const totalShares = dataset.reduce((s, d) => s + d.shares, 0);
-    const totalFavorites = dataset.reduce((s, d) => s + d.favorites, 0);
     const totalComments = dataset.reduce((s, d) => s + d.comments, 0);
-    const totalInteraction = totalLikes + totalShares + totalFavorites + totalComments;
+    const avgCompletionRate = (dataset.reduce((s, d) => s + d.completionRate, 0) / n).toFixed(1);
+    const avgReadTime = Math.round(dataset.reduce((s, d) => s + d.avgReadTime, 0) / n);
+    const totalInteraction = totalLikes + totalShares + totalComments;
     const avgEng = totalReads > 0 ? ((totalInteraction / totalReads) * 100).toFixed(1) : 0;
     const netF = dataset.reduce((s, d) => s + d.newFollowers - d.unfollowers, 0);
 
@@ -219,6 +236,8 @@ function updateOverview() {
     document.getElementById('avgReads').textContent = fmt(Math.round(totalReads / n));
     document.getElementById('totalLikes').textContent = fmt(totalLikes);
     document.getElementById('avgEngagement').textContent = avgEng + '%';
+    document.getElementById('avgCompletionRate').textContent = avgCompletionRate + '%';
+    document.getElementById('avgReadTimeCard').textContent = fmtTime(avgReadTime);
     document.getElementById('netFollowers').textContent = (netF >= 0 ? '+' : '') + fmt(netF);
 }
 
@@ -231,7 +250,9 @@ function updateTable() {
             <td>${fmt(d.reads)}</td>
             <td>${fmt(d.likes)}</td>
             <td>${fmt(d.shares)}</td>
-            <td>${fmt(d.favorites)}</td>
+            <td>${fmt(d.recommendSource)}</td>
+            <td>${d.completionRate}%</td>
+            <td>${fmtTime(d.avgReadTime)}</td>
             <td>${fmt(d.comments)}</td>
             <td>${fmt(d.newFollowers)}</td>
             <td>${fmt(d.unfollowers)}</td>
@@ -275,7 +296,6 @@ function updateCharts() {
         datasets: [
             { label: '点赞', data: dataset.map(d => d.likes), borderColor: blue, tension: 0.3 },
             { label: '分享', data: dataset.map(d => d.shares), borderColor: orange, tension: 0.3 },
-            { label: '收藏', data: dataset.map(d => d.favorites), borderColor: purple, tension: 0.3 },
             { label: '评论', data: dataset.map(d => d.comments), borderColor: cyan, tension: 0.3 },
         ]
     });
@@ -296,18 +316,44 @@ function updateCharts() {
     });
 
     // 4. 互动类型分布饼图
-    const totalLikes = dataset.reduce((s, d) => s + d.likes, 0);
-    const totalShares = dataset.reduce((s, d) => s + d.shares, 0);
-    const totalFavorites = dataset.reduce((s, d) => s + d.favorites, 0);
-    const totalComments = dataset.reduce((s, d) => s + d.comments, 0);
+    const totalLikesChart = dataset.reduce((s, d) => s + d.likes, 0);
+    const totalSharesChart = dataset.reduce((s, d) => s + d.shares, 0);
+    const totalCommentsChart = dataset.reduce((s, d) => s + d.comments, 0);
     renderChart('engagementPieChart', 'doughnut', {
-        labels: ['点赞', '分享', '收藏', '评论'],
+        labels: ['点赞', '分享', '评论'],
         datasets: [{
-            data: [totalLikes, totalShares, totalFavorites, totalComments],
-            backgroundColor: [blue, orange, purple, cyan],
+            data: [totalLikesChart, totalSharesChart, totalCommentsChart],
+            backgroundColor: [blue, orange, cyan],
         }]
     }, {
         plugins: { legend: { position: 'bottom' } }
+    });
+
+    // 4b. 完读率趋势
+    renderChart('completionRateChart', 'line', {
+        labels,
+        datasets: [{
+            label: '完读率 (%)',
+            data: dataset.map(d => d.completionRate),
+            borderColor: purple,
+            backgroundColor: 'rgba(114,46,209,0.1)',
+            fill: true,
+            tension: 0.3,
+        }]
+    }, {
+        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+    });
+
+    // 4c. 平均阅读时长趋势
+    renderChart('avgReadTimeChart', 'bar', {
+        labels,
+        datasets: [{
+            label: '平均阅读时长 (秒)',
+            data: dataset.map(d => d.avgReadTime),
+            backgroundColor: 'rgba(24,144,255,0.6)',
+        }]
+    }, {
+        scales: { y: { beginAtZero: true, ticks: { callback: v => v + 's' } } }
     });
 
     // 5. 文章阅读量排行
@@ -326,7 +372,7 @@ function updateCharts() {
 
     // 6. 互动率分析
     const engRates = dataset.map(d => {
-        const total = d.likes + d.shares + d.favorites + d.comments;
+        const total = d.likes + d.shares + d.comments;
         return d.reads > 0 ? parseFloat(((total / d.reads) * 100).toFixed(2)) : 0;
     });
     renderChart('engagementRateChart', 'bar', {
