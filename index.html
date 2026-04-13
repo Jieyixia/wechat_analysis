@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号数据看板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>微信公众号数据看板</h1>
+            <p class="subtitle">输入数据 · 分析趋势 · 可视化洞察</p>
+        </header>
+
+        <!-- 数据输入区域 -->
+        <section class="input-section">
+            <h2>数据录入</h2>
+            <form id="dataForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="date">日期</label>
+                        <input type="date" id="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="articleTitle">文章标题</label>
+                        <input type="text" id="articleTitle" placeholder="输入文章标题" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reads">阅读量</label>
+                        <input type="number" id="reads" min="0" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="likes">点赞数</label>
+                        <input type="number" id="likes" min="0" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="shares">分享数</label>
+                        <input type="number" id="shares" min="0" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="recommendSource">推荐来源</label>
+                        <input type="number" id="recommendSource" min="0" placeholder="0" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="completionRate">完读率 (%)</label>
+                        <input type="number" id="completionRate" min="0" max="100" step="0.1" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="avgReadTime">平均阅读时长 (秒)</label>
+                        <input type="number" id="avgReadTime" min="0" step="1" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="comments">评论数</label>
+                        <input type="number" id="comments" min="0" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newFollowers">新增关注</label>
+                        <input type="number" id="newFollowers" min="0" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="unfollowers">取消关注</label>
+                        <input type="number" id="unfollowers" min="0" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="totalFollowers">总关注数</label>
+                        <input type="number" id="totalFollowers" min="0" placeholder="0" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">添加数据</button>
+                    <button type="button" class="btn btn-secondary" id="loadSampleBtn">加载示例数据</button>
+                    <button type="button" class="btn btn-danger" id="clearAllBtn">清空所有数据</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 导入导出 -->
+        <section class="io-section">
+            <h2>数据管理</h2>
+            <div class="io-actions">
+                <button class="btn btn-secondary" id="exportBtn">导出 CSV</button>
+                <label class="btn btn-secondary" for="importFile">导入 CSV
+                    <input type="file" id="importFile" accept=".csv" hidden>
+                </label>
+            </div>
+        </section>
+
+        <!-- 概览卡片 -->
+        <section class="overview-section" id="overviewSection" style="display:none;">
+            <h2>数据概览</h2>
+            <div class="cards">
+                <div class="card">
+                    <div class="card-label">总文章数</div>
+                    <div class="card-value" id="totalArticles">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">总阅读量</div>
+                    <div class="card-value" id="totalReads">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">平均阅读量</div>
+                    <div class="card-value" id="avgReads">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">总点赞数</div>
+                    <div class="card-value" id="totalLikes">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">平均互动率</div>
+                    <div class="card-value" id="avgEngagement">0%</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">平均完读率</div>
+                    <div class="card-value" id="avgCompletionRate">0%</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">平均阅读时长</div>
+                    <div class="card-value" id="avgReadTimeCard">0s</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">净增关注</div>
+                    <div class="card-value" id="netFollowers">0</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 图表区域 -->
+        <section class="charts-section" id="chartsSection" style="display:none;">
+            <h2>数据可视化</h2>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>阅读量趋势</h3>
+                    <canvas id="readsChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>互动数据趋势</h3>
+                    <canvas id="engagementChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>粉丝增长趋势</h3>
+                    <canvas id="followersChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>互动类型分布</h3>
+                    <canvas id="engagementPieChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>完读率趋势</h3>
+                    <canvas id="completionRateChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>平均阅读时长趋势</h3>
+                    <canvas id="avgReadTimeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>文章阅读量排行 (Top 10)</h3>
+                    <canvas id="topArticlesChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>互动率分析</h3>
+                    <canvas id="engagementRateChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- 数据表格 -->
+        <section class="table-section" id="tableSection" style="display:none;">
+            <h2>数据明细</h2>
+            <div class="table-wrapper">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>文章标题</th>
+                            <th>阅读量</th>
+                            <th>点赞</th>
+                            <th>分享</th>
+                            <th>推荐来源</th>
+                            <th>完读率</th>
+                            <th>阅读时长</th>
+                            <th>评论</th>
+                            <th>新增关注</th>
+                            <th>取消关注</th>
+                            <th>总关注</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
